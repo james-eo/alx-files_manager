@@ -1,38 +1,39 @@
 import { createClient } from 'redis';
 
+const promisifyAll = require('./helpers');
+
 class RedisClient {
   constructor() {
-	this.client = createClient().on('error', (error) => console.log(error));
+    this.client = createClient().on('error', (error) => console.log(error));
+    this.client = promisifyAll(this.client, ['get', 'set', 'del']);
   }
 
   isAlive() {
-	if (this.client) {
-		return true;
-	} else {
-		return false;
-	}
+    if (this.client) {
+      return true;
+    }
+    return false;
   }
 
   async get(key) {
-	return new Promise((resolve, reject) => {
-		this.client.get(key, (error, val) => {
-			if (error) {
-				return reject(error);
-			}
-			if (val != null) {
-				return resolve(val);
-			}
-			return resolve(null);
-		});
-	});
+    try {
+      const val = await this.client.getAsync(key);
+      if (val != null) {
+        return val;
+      }
+      return null;
+    } catch (error) {
+      console.log(error);
+      return undefined;
+    }
   }
 
   async set(key, val, duration) {
-	await this.client.set(key, val, 'EX', duration);
+    await this.client.setAsync(key, val, 'EX', duration);
   }
 
   async del(key) {
-	return await this.client.del(key);
+    await this.client.delAsync(key);
   }
 }
 
