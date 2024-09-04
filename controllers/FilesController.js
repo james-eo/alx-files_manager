@@ -1,3 +1,4 @@
+import { console } from 'inspector';
 import { v4 as uuidv4 } from 'uuid';
 
 const { ObjectId } = require('mongodb');
@@ -88,6 +89,71 @@ class FilesController {
         console.log(`ERROR IN ADDING FILE: ${err}`);
       }
     }
+  }
+
+  async getShow(request, response) {
+    const fileId = request.params.id;
+    const requestHeader = request.get('X-Token');
+    const key = `auth_${requestHeader}`;
+
+    const userId = await redisClient.get(key);
+    if (!userId) {
+      response.status(401);
+      response.json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const file = await getFromDB(dbClient.db, 'files', { _id: ObjectId(fileId), userId: ObjectId(userId) });
+    if (!file) {
+      response.status(404);
+      response.json({ error: 'Not found' });
+      return;
+    }
+
+    response.status(200);
+    response.json({
+      id: file._id,
+      userId,
+      name: file.name,
+      type: file.type,
+      isPublic: file.isPublic,
+      parentId: file.parentId,
+    });
+  }
+
+  async getIndex(request, response) {
+    let { parentId = 0 } = request.query;
+    const { page } = request.query;
+    const requestHeader = request.get('X-Token');
+    const key = `auth_${requestHeader}`;
+
+    const userId = await redisClient.get(key);
+
+    if (!userId) {
+      response.status(401);
+      response.json({ error: 'Unauthorized' });
+      return;
+    }
+    const skip = parseInt(page, 10) * 20;
+
+    const filesCollection = dbClient.db.collection('files');
+
+    if (parentId !== 0) {
+      parentId = ObjectId(parentId);
+    }
+    filesCollection.aggregate([
+      { $match: { parentId } },
+      { $skip: skip },
+      { $limit: 20 },
+    ]).toArray((err, files) => {
+      if (err || files.length === 0) {
+        response.status(404);
+        response.json({ error: 'Not found' });
+        return;
+      }
+      response.status(200);
+      response.send(files);
+    });
   }
 }
 

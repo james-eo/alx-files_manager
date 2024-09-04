@@ -22,4 +22,16 @@ const addToDB = async (db, collName, keys) => new Promise((resolve, reject) => {
   });
 });
 
-module.exports = { getFromDB, addToDB };
+const getAllFromDB = async (db, collName) => new Promise((resolve, reject) => {
+  const collection = db.collection(collName);
+
+  collection.find({}).toArray((err, docs) => {
+    if (docs) {
+      resolve(docs);
+    } else {
+      reject(new Error(`Could not find items in: ${collName}`));
+    }
+  });
+});
+
+module.exports = { getFromDB, addToDB, getAllFromDB };
