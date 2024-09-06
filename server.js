@@ -1,6 +1,5 @@
+import express from 'express';
 import route from './routes/index';
-
-const express = require('express');
 
 const { env } = process;
 const port = env.PORT || 5000;

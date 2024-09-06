@@ -1,6 +1,6 @@
 import { createClient } from 'redis';
 
-const promisifyAll = require('./helpers');
+const promisifyAll = require('./helpers/helpers');
 
 class RedisClient {
   constructor() {
