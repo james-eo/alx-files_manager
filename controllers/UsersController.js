@@ -1,4 +1,5 @@
 import sha1 from 'sha1';
+import { ObjectId } from 'mongodb';
 import dbClient from '../utils/db';
 import redisClient from '../utils/redis';
 
@@ -16,20 +17,20 @@ class UsersController {
     const newUser = { email, password: hashedPassword };
 
     const result = await dbClient.db.collection('users').insertOne(newUser);
-    res.status(201).json({ id: result.insertedId, email });
+    return res.status(201).json({ id: result.insertedId, email });
   }
 
-  UsersController.getMe = async (req, res) => {
-  const token = req.headers['x-token'];
-  const userId = await redisClient.get(`auth_${token}`);
+  static async getMe(req, res) {
+    const token = req.headers['x-token'];
+    const userId = await redisClient.get(`auth_${token}`);
 
-  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-  const user = await dbClient.db.collection('users').findOne({ _id: new ObjectId(userId) });
-  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    const user = await dbClient.db.collection('users').findOne({ _id: new ObjectId(userId) });
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
-  res.status(200).json({ id: user._id, email: user.email });
-  };
+    return res.status(200).json({ id: user._id, email: user.email });
+  }
 }
 
 export default UsersController;
