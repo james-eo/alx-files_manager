@@ -1,55 +1,35 @@
-const sha1 = require('sha1');
-const { ObjectId } = require('mongodb');
-const dbClient = require('../utils/db');
-const redisClient = require('../utils/redis');
+import sha1 from 'sha1';
+import dbClient from '../utils/db';
+import redisClient from '../utils/redis';
 
 class UsersController {
-  postNew(request, response) {
-    const { email, password } = request.body;
+  static async postNew(req, res) {
+    const { email, password } = req.body;
 
-    if (!email) {
-      response.status(400);
-      response.json({ error: 'Missing email' });
-      return;
-    }
-    if (!password) {
-      response.status(400);
-      response.json({ eroor: 'Missing password' });
-      return;
-    }
+    if (!email) return res.status(400).json({ error: 'Missing email' });
+    if (!password) return res.status(400).json({ error: 'Missing password' });
 
-    const usersCollection = dbClient.db.collection('users');
+    const existingUser = await dbClient.db.collection('users').findOne({ email });
+    if (existingUser) return res.status(400).json({ error: 'Already exist' });
 
-    usersCollection.findOne({ email }, (err, doc) => {
-      if (doc) {
-        response.status(400);
-        response.json({ error: 'Already exist' });
-      } else {
-        usersCollection.insertOne({ email, password: sha1(password) }, (err, r) => {
-          response.status(201);
-          response.json({ id: r.insertedId, email });
-        });
-      }
-    });
+    const hashedPassword = sha1(password);
+    const newUser = { email, password: hashedPassword };
+
+    const result = await dbClient.db.collection('users').insertOne(newUser);
+    res.status(201).json({ id: result.insertedId, email });
   }
 
-  async getMe(request, response) {
-    const requestHeader = request.get('X-Token');
-    const key = `auth_${requestHeader}`;
+  UsersController.getMe = async (req, res) => {
+  const token = req.headers['x-token'];
+  const userId = await redisClient.get(`auth_${token}`);
 
-    const userId = await redisClient.get(key);
-    const usersCollection = dbClient.db.collection('users');
+  if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
-    usersCollection.findOne({ _id: ObjectId(userId) }, (err, doc) => {
-      if (doc) {
-        response.status(201);
-        response.json({ id: userId, email: doc.email });
-      } else {
-        response.status(401);
-        response.json({ error: 'Unauthorized' });
-      }
-    });
-  }
+  const user = await dbClient.db.collection('users').findOne({ _id: new ObjectId(userId) });
+  if (!user) return res.status(401).json({ error: 'Unauthorized' });
+
+  res.status(200).json({ id: user._id, email: user.email });
+  };
 }
 
-export default new UsersController();
+export default UsersController;
