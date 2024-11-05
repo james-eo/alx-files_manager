@@ -11,7 +11,7 @@
 
 
 
-A robust file management API built with Node.js, Express, MongoDB, and Redis that handles file upload, authentication, and background processing.
+A robust back-end file management API built with Node.js, Express, MongoDB, Redis, Bull and Mocha that handles user authentication, file upload/view/change permission, thumbnail generation and background processing.
 
 ## 🚀 Features
 
